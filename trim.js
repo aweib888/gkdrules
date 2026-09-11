@@ -5,6 +5,7 @@ const upstreamPath = process.argv[2] || 'upstream.json5';
 const outputPath = process.argv[3] || 'gkd.json5';
 const delListPath = process.argv[4] || 'delapplist.txt';
 
+// 读取删除列表
 const delSet = new Set(
   fs.readFileSync(delListPath, 'utf8')
     .split('\n')
@@ -12,6 +13,7 @@ const delSet = new Set(
     .filter(l => l && !l.startsWith('#'))
 );
 
+// 解析上游 JSON5
 const data = JSON5.parse(fs.readFileSync(upstreamPath, 'utf8'));
 
 // 1. 删除 apps 中命中的包
@@ -28,7 +30,7 @@ if (Array.isArray(data.globalGroups)) {
       group.rules = group.rules.filter(rule => {
         if (Array.isArray(rule.apps)) {
           rule.apps = rule.apps.filter(a => !delSet.has(a.id));
-          // 如果 apps 被清空，整条规则删掉，避免变成对所有应用生效
+          // apps 被清空则整条规则删掉，避免变成对所有应用生效
           if (rule.apps.length === 0) return false;
         }
         return true;
@@ -37,5 +39,6 @@ if (Array.isArray(data.globalGroups)) {
   });
 }
 
+// 写回
 fs.writeFileSync(outputPath, JSON5.stringify(data, null, 2));
 console.log('Done.');
