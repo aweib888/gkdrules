@@ -2,7 +2,7 @@ name: Sync and Trim GKD Rules
 
 on:
   schedule:
-    - cron: '0 2 * * *'   # 每天 UTC 2 点，北京时间 10 点
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
 permissions:
