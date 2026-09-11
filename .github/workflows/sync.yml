@@ -1,0 +1,49 @@
+name: Sync and Trim GKD Rules
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 每天 UTC 2 点，北京时间 10 点
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install json5
+        run: npm install json5
+
+      - name: Fetch upstream
+        run: |
+          curl -sL https://raw.githubusercontent.com/mrlctate/gkd-mrlc/main/dist/gkd.json5 -o upstream.json5
+
+      - name: Read versions
+        id: ver
+        run: |
+          UP=$(node -e "const J=require('json5');const d=J.parse(require('fs').readFileSync('upstream.json5','utf8'));console.log(d.version||'0')")
+          LOCAL=$(cat version.txt 2>/dev/null || echo "0")
+          echo "up=$UP" >> $GITHUB_OUTPUT
+          echo "local=$LOCAL" >> $GITHUB_OUTPUT
+
+      - name: Skip if no update
+        if: steps.ver.outputs.up == steps.ver.outputs.local
+        run: echo "No update (${{ steps.ver.outputs.up }}), skipping."
+
+      - name: Trim rules
+        if: steps.ver.outputs.up != steps.ver.outputs.local
+        run: node trim.js upstream.json5 gkd.json5 delapplist.txt
+
+      - name: Commit
+        if: steps.ver.outputs.up != steps.ver.outputs.local
+        run: |
+          echo "${{ steps.ver.outputs.up }}" > version.txt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add gkd.json5 version.txt
+          git commit -m "Sync upstream v${{ steps.ver.outputs.up }}" || exit 0
+          git push
