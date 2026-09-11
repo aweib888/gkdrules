@@ -32,7 +32,6 @@ if (Array.isArray(data.globalGroups)) {
       group.rules = group.rules.filter(rule => {
         if (Array.isArray(rule.apps)) {
           rule.apps = rule.apps.filter(a => !delSet.has(a.id));
-          // apps 被清空则整条规则删掉，避免变成对所有应用生效
           if (rule.apps.length === 0) return false;
         }
         return true;
@@ -55,6 +54,10 @@ const myVer = Number(myData.version) || 0;
 data.version = Math.max(upVer, myVer);
 console.log(`version: upstream=${upVer}, mine=${myVer} -> ${data.version}`);
 
-// 5. 写回（紧凑格式，减少体积）
+// 5. 修改根 id 和 name，避免和上游订阅冲突
+data.id = 888;
+data.name = 'Mrlc精简版（含自编规则）';
+
+// 6. 写回（紧凑格式，减少体积）
 fs.writeFileSync(outputPath, JSON5.stringify(data));
 console.log('Done.');
