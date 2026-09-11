@@ -1,7 +1,14 @@
 {
   id: 888,
   name: '我的自编规则',
-  version: 1,
+  version: 2,        // 改过内容就 +1
+
+  // ===== 默认关闭的全局规则 =====
+  // 按 name 匹配上游 globalGroups，把对应规则的 enable 设为 false。
+  // name 找不到 → workflow 报错失败。
+  globalDisable: [
+    '通知提示-全局关闭应用的通知提示',
+  ],
 
   // ===== 全局黑名单 =====
   // 只写 name + apps，不写 rules、不写 key。
