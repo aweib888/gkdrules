@@ -40,7 +40,10 @@ jobs:
       - name: Check for update
         id: check
         run: |
-          if [ "${{ steps.ver.outputs.up }}" = "${{ steps.ver.outputs.local_up }}" ] && [ "${{ steps.ver.outputs.my }}" = "${{ steps.ver.outputs.local_my }}" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Manual trigger, forcing regeneration."
+          elif [ "${{ steps.ver.outputs.up }}" = "${{ steps.ver.outputs.local_up }}" ] && [ "${{ steps.ver.outputs.my }}" = "${{ steps.ver.outputs.local_my }}" ]; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No update (upstream v${{ steps.ver.outputs.up }}, mine v${{ steps.ver.outputs.my }}), skipping."
           else
