@@ -66,35 +66,41 @@ if (Array.isArray(myData.globalGroups)) {
   });
 }
 
+// ===== 3.5 默认关闭指定全局规则 =====
+if (Array.isArray(myData.globalDisable)) {
+  myData.globalDisable.forEach(name => {
+    const target = (data.globalGroups || []).find(g => g.name === name);
+    if (!target) {
+      throw new Error(`gkdzy.json5 中 globalDisable 指定的全局规则 name 在上游找不到: "${name}"`);
+    }
+    target.enable = false;
+    console.log(`global disabled: "${name}"`);
+  });
+}
+
 // ===== 4. 合并 apps：你的 groups 在前，上游 groups 在后；key 冲突改上游 =====
 if (Array.isArray(myData.apps)) {
-  // 先建一个上游 apps 的索引
   const upMap = new Map(data.apps.map(a => [a.id, a]));
 
   myData.apps.forEach(myApp => {
     const upApp = upMap.get(myApp.id);
 
-    // 上游没有这个 App，直接追加
     if (!upApp) {
       data.apps.push(myApp);
       console.log(`app added (new): ${myApp.id}`);
       return;
     }
 
-    // 两边都有：合并 groups
     const myGroups = Array.isArray(myApp.groups) ? myApp.groups : [];
     const upGroups = Array.isArray(upApp.groups) ? upApp.groups : [];
 
-    // 收集你的所有 group key
     const myKeys = new Set(myGroups.map(g => g.key));
 
-    // 该 App 当前所有 key（你的 + 上游的），用于分配新 key
     const allKeys = new Set();
     myGroups.forEach(g => allKeys.add(g.key));
     upGroups.forEach(g => allKeys.add(g.key));
     let nextKey = Math.max(...Array.from(allKeys).filter(k => typeof k === 'number'), 0) + 1;
 
-    // 处理上游 groups：key 冲突的改 key，并同步改内部 preKeys
     const renamedUpGroups = upGroups.map(upGroup => {
       if (!myKeys.has(upGroup.key)) return upGroup;
 
@@ -102,10 +108,8 @@ if (Array.isArray(myData.apps)) {
       const newKey = nextKey++;
       console.log(`  key conflict on ${myApp.id}: upstream group key ${oldKey} -> ${newKey}`);
 
-      // 改 group 的 key
       upGroup.key = newKey;
 
-      // 同步改内部 rules[].preKeys 里对 oldKey 的引用
       if (Array.isArray(upGroup.rules)) {
         upGroup.rules.forEach(rule => {
           if (Array.isArray(rule.preKeys)) {
@@ -116,17 +120,14 @@ if (Array.isArray(myData.apps)) {
       return upGroup;
     });
 
-    // 检查改完后该 App 所有 group key 是否唯一
     const finalKeys = [...myGroups.map(g => g.key), ...renamedUpGroups.map(g => g.key)];
     const dup = finalKeys.filter((k, i) => finalKeys.indexOf(k) !== i);
     if (dup.length > 0) {
       throw new Error(`App ${myApp.id} 合并后存在重复 key: ${JSON.stringify([...new Set(dup)])}`);
     }
 
-    // 你的在前，上游的在后
     upApp.groups = myGroups.concat(renamedUpGroups);
 
-    // name 等字段以你的为准
     if (myApp.name) upApp.name = myApp.name;
 
     console.log(`app merged: ${myApp.id} (mine ${myGroups.length} + upstream ${renamedUpGroups.length})`);
