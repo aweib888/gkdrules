@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write          # 关键：允许 GITHUB_TOKEN 写仓库
+  contents: write
 
 jobs:
   sync:
@@ -16,7 +16,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: '24'
+          node-version: '20'
 
       - name: Install json5
         run: npm install json5
@@ -29,25 +29,36 @@ jobs:
         id: ver
         run: |
           UP=$(node -e "const J=require('json5');const d=J.parse(require('fs').readFileSync('upstream.json5','utf8'));console.log(d.version)")
-          LOCAL=$(cat version.txt 2>/dev/null || echo "0")
+          MY=$(node -e "const J=require('json5');const d=J.parse(require('fs').readFileSync('gkdzy.json5','utf8'));console.log(d.version)")
+          LOCAL_UP=$(sed -n '1p' version.txt 2>/dev/null || echo "0")
+          LOCAL_MY=$(sed -n '2p' version.txt 2>/dev/null || echo "0")
           echo "up=$UP" >> $GITHUB_OUTPUT
-          echo "local=$LOCAL" >> $GITHUB_OUTPUT
+          echo "my=$MY" >> $GITHUB_OUTPUT
+          echo "local_up=$LOCAL_UP" >> $GITHUB_OUTPUT
+          echo "local_my=$LOCAL_MY" >> $GITHUB_OUTPUT
 
-      - name: Skip if no update
-        if: steps.ver.outputs.up == steps.ver.outputs.local
-        run: echo "No update (upstream v${{ steps.ver.outputs.up }}), skipping."
+      - name: Check for update
+        id: check
+        run: |
+          if [ "${{ steps.ver.outputs.up }}" = "${{ steps.ver.outputs.local_up }}" ] && [ "${{ steps.ver.outputs.my }}" = "${{ steps.ver.outputs.local_my }}" ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No update (upstream v${{ steps.ver.outputs.up }}, mine v${{ steps.ver.outputs.my }}), skipping."
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Update detected."
+          fi
 
-      - name: Trim rules
-        if: steps.ver.outputs.up != steps.ver.outputs.local
-        run: node trim.js upstream.json5 gkd.json5 delapplist.txt
+      - name: Trim and merge
+        if: steps.check.outputs.changed == 'true'
+        run: node trim.js upstream.json5 gkd.json5 delapplist.txt gkdzy.json5
 
       - name: Commit
-        if: steps.ver.outputs.up != steps.ver.outputs.local
+        if: steps.check.outputs.changed == 'true'
         run: |
-          echo "${{ steps.ver.outputs.up }}" > version.txt
+          printf "%s\n%s\n" "${{ steps.ver.outputs.up }}" "${{ steps.ver.outputs.my }}" > version.txt
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add gkd.json5 version.txt
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "Sync upstream v${{ steps.ver.outputs.up }}"
+          git commit -m "Sync upstream v${{ steps.ver.outputs.up }} + mine v${{ steps.ver.outputs.my }}"
           git push
