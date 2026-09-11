@@ -55,6 +55,6 @@ const myVer = Number(myData.version) || 0;
 data.version = Math.max(upVer, myVer);
 console.log(`version: upstream=${upVer}, mine=${myVer} -> ${data.version}`);
 
-// 5. 写回
-fs.writeFileSync(outputPath, JSON5.stringify(data, null, 2));
+// 5. 写回（紧凑格式，减少体积）
+fs.writeFileSync(outputPath, JSON5.stringify(data));
 console.log('Done.');
