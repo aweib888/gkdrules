@@ -3,7 +3,7 @@ name: Sync and Trim GKD Rules
 on:
   schedule:
     - cron: '0 2 * * *'   # 每天 UTC 2 点，北京时间 10 点
-  workflow_dispatch:
+  workflow_dispatch:       # 也允许手动触发
 
 jobs:
   sync:
@@ -25,14 +25,14 @@ jobs:
       - name: Read versions
         id: ver
         run: |
-          UP=$(node -e "const J=require('json5');const d=J.parse(require('fs').readFileSync('upstream.json5','utf8'));console.log(d.version||'0')")
+          UP=$(node -e "const J=require('json5');const d=J.parse(require('fs').readFileSync('upstream.json5','utf8'));console.log(d.version)")
           LOCAL=$(cat version.txt 2>/dev/null || echo "0")
           echo "up=$UP" >> $GITHUB_OUTPUT
           echo "local=$LOCAL" >> $GITHUB_OUTPUT
 
       - name: Skip if no update
         if: steps.ver.outputs.up == steps.ver.outputs.local
-        run: echo "No update (${{ steps.ver.outputs.up }}), skipping."
+        run: echo "No update (upstream v${{ steps.ver.outputs.up }}), skipping."
 
       - name: Trim rules
         if: steps.ver.outputs.up != steps.ver.outputs.local
