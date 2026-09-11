@@ -3,7 +3,10 @@ name: Sync and Trim GKD Rules
 on:
   schedule:
     - cron: '0 2 * * *'   # 每天 UTC 2 点，北京时间 10 点
-  workflow_dispatch:       # 也允许手动触发
+  workflow_dispatch:
+
+permissions:
+  contents: write          # 关键：允许 GITHUB_TOKEN 写仓库
 
 jobs:
   sync:
@@ -45,5 +48,6 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add gkd.json5 version.txt
-          git commit -m "Sync upstream v${{ steps.ver.outputs.up }}" || exit 0
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Sync upstream v${{ steps.ver.outputs.up }}"
           git push
