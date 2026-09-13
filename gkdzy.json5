@@ -82,7 +82,7 @@ apps: [
           ],
           action: 'click',
           matches: [
-            '@ImageView[name="android.widget.ImageView"][visibleToUser=true] <<n [id="com.phoenix.read:id/cxh"]',
+            '@ImageView[name="android.widget.ImageView"][visibleToUser=true] <<n [id="com.phoenix.read:id/container"]',
           ],
           actionMaximum: 1,
         },
